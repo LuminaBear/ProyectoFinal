@@ -88,35 +88,39 @@ int main()
 	GLfloat vertices[] =
 	{
 		// Positions             // Colors             // Texture Coords
-		// --- SUELO (y = -2.6) ---
-		-3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		 3.0f, -2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     6.0f, 0.0f,
-		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  6.0f, 4.0f,
-		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 4.0f,
 
-		// --- TECHO (y = 2.6) ---
+		// --- SUELO (y = -2.6) --- (Sin cambios)
+		-3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
+		 3.0f, -2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
+		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
+		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
+
+		// --- TECHO (y = 2.6) --- (Sin cambios)
 		-3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     6.0f, 0.0f,
-		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  6.0f, 4.0f,
-		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 4.0f,
+		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
+		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
+		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
 
-		// --- PARED IZQUIERDA (x = -3.0) ---
+		// --- PARED IZQUIERDA (x = -3.0) --- (ESPEJO HORIZONTAL)
+		// Cambiamos las X de la textura: los 1.0 pasan a 0.0, y los 0.0 a 1.0
 		-3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		-3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     4.0f, 0.0f,
-		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  4.0f, 4.0f,
-		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 4.0f,
+		-3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
+		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
+		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
 
-		// --- PARED DERECHA (x = 3.0) ---
-		 3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     4.0f, 0.0f,
-		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  4.0f, 4.0f,
-		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 4.0f,
+		// --- PARED DERECHA (x = 3.0) --- (ESPEJO HORIZONTAL)
+		// Cambiamos las X de la textura: los 0.0 pasan a 1.0, y los 1.0 a 0.0
+		 3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
+		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 1.0f,
+		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  0.0f, 1.0f,
+		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
 
-		 // --- PARED DE CIERRE FRONTAL/TRASERA (Z = 0.0) ---
-		 -3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		  3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     6.0f, 0.0f,
-		  3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     6.0f, 5.2f,
-		 -3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 5.2f
+		 // --- PARED DE CIERRE FRONTAL/TRASERA (Z = 0.0) --- (ESPEJO HORIZONTAL)
+		 // Cambiamos las X de la textura
+		 -3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
+		  3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
+		  3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
+		 -3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 1.0f
 	};
 
 	// Índices 
@@ -152,18 +156,18 @@ int main()
 	// ==========================================
 	// CARGA DE TEXTURAS
 	// ==========================================
-	GLuint texFloor = loadTexture("images/piso.png");
-	GLuint texCeiling = loadTexture("images/techo.png");
-	GLuint texFrontWall = loadTexture("images/pared_inicio.png");
-	GLuint texBackWall = loadTexture("images/pared_final.png");
+	GLuint texFloor = loadTexture("images/piso.jpg");
+	GLuint texCeiling = loadTexture("images/techo.jpg");
+	GLuint texFrontWall = loadTexture("images/pared_inicio.jpg");
+	GLuint texBackWall = loadTexture("images/pared_final.jpg");
 
-	// Arreglos para las texturas de las paredes laterales (5 secciones)
-	GLuint texWallLeft[5];
-	GLuint texWallRight[5];
+	// Arreglos para las texturas de las paredes laterales (AHORA 6 SECCIONES)
+	GLuint texWallLeft[6];
+	GLuint texWallRight[6];
 
-	for (int i = 0; i < 5; i++) {
-		std::string leftPath = "images/wall_left_" + std::to_string(i) + ".png";
-		std::string rightPath = "images/wall_right_" + std::to_string(i) + ".png";
+	for (int i = 0; i < 6; i++) {
+		std::string leftPath = "images/wall_left_" + std::to_string(i) + ".jpg";
+		std::string rightPath = "images/wall_right_" + std::to_string(i) + ".jpg";
 		texWallLeft[i] = loadTexture(leftPath.c_str());
 		texWallRight[i] = loadTexture(rightPath.c_str());
 	}
@@ -197,8 +201,8 @@ int main()
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 
-		// 1. Renderizamos las 5 secciones del túnel separando las caras
-		for (int i = 0; i < 5; i++)
+		// 1. Renderizamos las 6 secciones del túnel separando las caras
+		for (int i = 0; i < 6; i++)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, glm::vec3(0.0f, 0.0f, -6.8f * i));
@@ -227,9 +231,9 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, texFrontWall);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(24 * sizeof(GLuint)));
 
-		// 3. Renderizamos la pared del FINAL (Z = -34.0)
+		// 3. Renderizamos la pared del FINAL (Z = -40.8)
 		glm::mat4 modelBack = glm::mat4(1.0f);
-		modelBack = glm::translate(modelBack, glm::vec3(0.0f, 0.0f, -34.0f));
+		modelBack = glm::translate(modelBack, glm::vec3(0.0f, 0.0f, -40.8f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelBack));
 		glBindTexture(GL_TEXTURE_2D, texBackWall);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(24 * sizeof(GLuint)));
@@ -247,7 +251,7 @@ int main()
 }
 
 // ==========================================
-// FUNCIÓN AUXILIAR PARA CARGAR TEXTURAS
+// FUNCIÓN AUXILIAR REPARADA PARA CARGAR JPGs
 // ==========================================
 GLuint loadTexture(const char* path)
 {
@@ -255,7 +259,7 @@ GLuint loadTexture(const char* path)
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 
-	// Parametros de envoltura y filtro
+	// Parámetros de envoltura y filtro
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -263,26 +267,19 @@ GLuint loadTexture(const char* path)
 
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true);
-	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+
+	// MAGIA AQUÍ: Forzamos STBI_rgb_alpha (4 canales) sin importar si la imagen es RGB
+	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, STBI_rgb_alpha);
 
 	if (data)
 	{
-		GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		// Como forzamos 4 canales arriba, aquí SIEMPRE pasamos GL_RGBA
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
 	{
-		std::cout << "No se encontro: " << path << ". Usando checker_Tex.png como respaldo." << std::endl;
-		stbi_image_free(data); // Liberar memoria si falló
-
-		// Cargar textura de respaldo
-		data = stbi_load("images/checker_Tex.png", &width, &height, &nrChannels, 0);
-		if (data) {
-			GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-			glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-			glGenerateMipmap(GL_TEXTURE_2D);
-		}
+		std::cout << "¡ALERTA! No se pudo cargar: " << path << std::endl;
 	}
 	stbi_image_free(data);
 
