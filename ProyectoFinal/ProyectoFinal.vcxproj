@@ -28,8 +28,6 @@
   <ItemGroup>
     <None Include="Shader\lamp.frag" />
     <None Include="Shader\lamp.vs" />
-    <None Include="Shader\modelLoading.frag" />
-    <None Include="Shader\modelLoading.vs" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

@@ -25,27 +25,33 @@
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
-GLuint loadTexture(const char* path); // Nueva función para cargar texturas fácilmente
+GLuint loadTexture(const char* path);
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 600;
 int SCREEN_WIDTH, SCREEN_HEIGHT;
 
-// Camera 
+// Camera
 Camera camera(glm::vec3(0.0f, 0.0f, -0.5f));
 GLfloat lastX = WIDTH / 2.0;
 GLfloat lastY = HEIGHT / 2.0;
 bool keys[1024];
 bool firstMouse = true;
 
-// Light attributes
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-
 // Deltatime
-GLfloat deltaTime = 0.0f;	// Time between current frame and last frame
-GLfloat lastFrame = 0.0f;  	// Time of last frame
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
 
-// The MAIN function
+// Posiciones exactas de las 6 luces (En el centro de cada sección del techo)
+glm::vec3 pointLightPositions[] = {
+	glm::vec3(0.0f, 2.4f, -3.4f),
+	glm::vec3(0.0f, 2.4f, -10.2f),
+	glm::vec3(0.0f, 2.4f, -17.0f),
+	glm::vec3(0.0f, 2.4f, -23.8f),
+	glm::vec3(0.0f, 2.4f, -30.6f),
+	glm::vec3(0.0f, 2.4f, -37.4f)
+};
+
 int main()
 {
 	// Init GLFW
@@ -56,7 +62,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Túnel con Múltiples Texturas", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Túnel Iluminado", nullptr, nullptr);
 
 	if (nullptr == window)
 	{
@@ -84,53 +90,56 @@ int main()
 
 	Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
 
-	// Vértices
+	// Vértices 
 	GLfloat vertices[] =
 	{
-		// Positions             // Colors             // Texture Coords
+		// Positions             // Normals (Hacia dónde apunta)  // Texture Coords
 
-		// --- SUELO (y = -2.6) --- (Sin cambios)
-		-3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		 3.0f, -2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
-		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
-		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
+		// --- SUELO (Y = 1.0) ---
+		-3.0f, -2.6f,  0.0f,     0.0f, 1.0f, 0.0f,     0.0f, 0.0f,
+		 3.0f, -2.6f,  0.0f,	 0.0f, 1.0f, 0.0f,     1.0f, 0.0f,
+		 3.0f, -2.6f, -6.8f,     0.0f, 1.0f, 0.0f,	   1.0f, 1.0f,
+		-3.0f, -2.6f, -6.8f,     0.0f, 1.0f, 0.0f,     0.0f, 1.0f,
 
-		// --- TECHO (y = 2.6) --- (Sin cambios)
-		-3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
-		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
-		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
+		// --- TECHO (Y = -1.0) ---
+		-3.0f,  2.6f,  0.0f,     0.0f, -1.0f, 0.0f,    0.0f, 0.0f,
+		 3.0f,  2.6f,  0.0f,	 0.0f, -1.0f, 0.0f,    1.0f, 0.0f,
+		 3.0f,  2.6f, -6.8f,     0.0f, -1.0f, 0.0f,	   1.0f, 1.0f,
+		-3.0f,  2.6f, -6.8f,     0.0f, -1.0f, 0.0f,    0.0f, 1.0f,
 
-		// --- PARED IZQUIERDA (x = -3.0) --- (ESPEJO HORIZONTAL)
-		// Cambiamos las X de la textura: los 1.0 pasan a 0.0, y los 0.0 a 1.0
-		-3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		-3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
-		-3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  1.0f, 1.0f,
-		-3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
+		// --- PARED IZQUIERDA (X = 1.0) ---
+		-3.0f, -2.6f,  0.0f,     1.0f, 0.0f, 0.0f,     0.0f, 0.0f,
+		-3.0f,  2.6f,  0.0f,	 1.0f, 0.0f, 0.0f,     0.0f, 1.0f,
+		-3.0f,  2.6f, -6.8f,     1.0f, 0.0f, 0.0f,	   1.0f, 1.0f,
+		-3.0f, -2.6f, -6.8f,     1.0f, 0.0f, 0.0f,     1.0f, 0.0f,
 
-		// --- PARED DERECHA (x = 3.0) --- (ESPEJO HORIZONTAL)
-		// Cambiamos las X de la textura: los 0.0 pasan a 1.0, y los 1.0 a 0.0
-		 3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
-		 3.0f,  2.6f,  0.0f,	1.0f, 1.0f, 1.0f,     1.0f, 1.0f,
-		 3.0f,  2.6f, -6.8f,    1.0f, 1.0f, 1.0f,	  0.0f, 1.0f,
-		 3.0f, -2.6f, -6.8f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
+		// --- PARED DERECHA (X = -1.0) ---
+		 3.0f, -2.6f,  0.0f,    -1.0f, 0.0f, 0.0f,     1.0f, 0.0f,
+		 3.0f,  2.6f,  0.0f,	-1.0f, 0.0f, 0.0f,     1.0f, 1.0f,
+		 3.0f,  2.6f, -6.8f,    -1.0f, 0.0f, 0.0f,	   0.0f, 1.0f,
+		 3.0f, -2.6f, -6.8f,    -1.0f, 0.0f, 0.0f,     0.0f, 0.0f,
 
-		 // --- PARED DE CIERRE FRONTAL/TRASERA (Z = 0.0) --- (ESPEJO HORIZONTAL)
-		 // Cambiamos las X de la textura
-		 -3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 0.0f,
-		  3.0f, -2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 0.0f,
-		  3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     0.0f, 1.0f,
-		 -3.0f,  2.6f,  0.0f,    1.0f, 1.0f, 1.0f,     1.0f, 1.0f
+		 // --- PARED FINAL (Apunta hacia el túnel: Z = 1.0) ---
+		 -3.0f, -2.6f,  0.0f,    0.0f, 0.0f, 1.0f,     1.0f, 0.0f,
+		  3.0f, -2.6f,  0.0f,    0.0f, 0.0f, 1.0f,     0.0f, 0.0f,
+		  3.0f,  2.6f,  0.0f,    0.0f, 0.0f, 1.0f,     0.0f, 1.0f,
+		 -3.0f,  2.6f,  0.0f,    0.0f, 0.0f, 1.0f,     1.0f, 1.0f,
+
+		 // --- PARED INICIO (Apunta hacia adentro del túnel: Z = -1.0) ---
+		 -3.0f, -2.6f,  0.0f,    0.0f, 0.0f, -1.0f,    1.0f, 0.0f,
+		  3.0f, -2.6f,  0.0f,    0.0f, 0.0f, -1.0f,    0.0f, 0.0f,
+		  3.0f,  2.6f,  0.0f,    0.0f, 0.0f, -1.0f,    0.0f, 1.0f,
+		 -3.0f,  2.6f,  0.0f,    0.0f, 0.0f, -1.0f,    1.0f, 1.0f
 	};
 
-	// Índices 
 	GLuint indices[] =
 	{
-		0,  1,  2,      2,  3,  0,  // Suelo (Offset 0)
-		4,  5,  6,      6,  7,  4,  // Techo (Offset 6)
-		8,  9, 10,     10, 11,  8,  // Pared Izquierda (Offset 12)
-	   12, 13, 14,     14, 15, 12,  // Pared Derecha (Offset 18)
-	   16, 17, 18,     18, 19, 16   // Pared de Cierre (Offset 24)
+		0,  1,  2,      2,  3,  0,  // Suelo
+		4,  5,  6,      6,  7,  4,  // Techo
+		8,  9, 10,     10, 11,  8,  // Pared Izquierda
+	   12, 13, 14,     14, 15, 12,  // Pared Derecha
+	   16, 17, 18,     18, 19, 16,  // Pared Final (Offset 24)
+	   20, 21, 22,     22, 23, 20   // Pared Inicio (Offset 30)
 	};
 
 	GLuint VBO, VAO, EBO;
@@ -153,15 +162,12 @@ int main()
 	glEnableVertexAttribArray(2);
 	glBindVertexArray(0);
 
-	// ==========================================
-	// CARGA DE TEXTURAS
-	// ==========================================
+	// Carga de Texturas
 	GLuint texFloor = loadTexture("images/piso.jpg");
 	GLuint texCeiling = loadTexture("images/techo.jpg");
 	GLuint texFrontWall = loadTexture("images/pared_inicio.jpg");
 	GLuint texBackWall = loadTexture("images/pared_final.jpg");
 
-	// Arreglos para las texturas de las paredes laterales (AHORA 6 SECCIONES)
 	GLuint texWallLeft[6];
 	GLuint texWallRight[6];
 
@@ -171,7 +177,6 @@ int main()
 		texWallLeft[i] = loadTexture(leftPath.c_str());
 		texWallRight[i] = loadTexture(rightPath.c_str());
 	}
-	// ==========================================
 
 	// Game loop
 	while (!glfwWindowShouldClose(window))
@@ -183,7 +188,7 @@ int main()
 		glfwPollEvents();
 		DoMovement();
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		lampShader.Use();
@@ -192,46 +197,63 @@ int main()
 		glm::mat4 projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 
 		GLint modelLoc = glGetUniformLocation(lampShader.Program, "model");
-		GLint viewLoc = glGetUniformLocation(lampShader.Program, "view");
-		GLint projLoc = glGetUniformLocation(lampShader.Program, "projection");
+		glUniformMatrix4fv(glGetUniformLocation(lampShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+		glUniformMatrix4fv(glGetUniformLocation(lampShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+		// --- CONFIGURACIÓN DE ILUMINACIÓN ---
+		glm::vec3 camPos = camera.GetPosition();
+		glUniform3f(glGetUniformLocation(lampShader.Program, "viewPos"), camPos.x, camPos.y, camPos.z);
+
+		// 1. Luz Direccional (Ambiental desde la pared izquierda)
+		// 1.0f en X significa que la luz viaja hacia la derecha.
+		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.direction"), 1.0f, -0.2f, 0.0f);
+		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.ambient"), 0.15f, 0.15f, 0.15f); // Luz base en todo el túnel
+		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.diffuse"), 0.35f, 0.35f, 0.35f); // Resalta la pared derecha
+		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.specular"), 0.1f, 0.1f, 0.1f);
+
+		// 2. Configuramos las 6 luces puntuales del techo
+		for (int i = 0; i < 6; i++)
+		{
+			std::string number = std::to_string(i);
+			glUniform3f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].position").c_str()), pointLightPositions[i].x, pointLightPositions[i].y, pointLightPositions[i].z);
+			glUniform3f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].ambient").c_str()), 0.05f, 0.05f, 0.05f);
+			glUniform3f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].diffuse").c_str()), 0.8f, 0.8f, 0.8f);
+			glUniform3f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].specular").c_str()), 1.0f, 1.0f, 1.0f);
+			glUniform1f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].constant").c_str()), 1.0f);
+			glUniform1f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].linear").c_str()), 0.09f);
+			glUniform1f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].quadratic").c_str()), 0.032f);
+		}
+		// ------------------------------------
 
 		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
 
-		// 1. Renderizamos las 6 secciones del túnel separando las caras
 		for (int i = 0; i < 6; i++)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, glm::vec3(0.0f, 0.0f, -6.8f * i));
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-			// Dibujar SUELO (Offset 0 índices)
 			glBindTexture(GL_TEXTURE_2D, texFloor);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
 
-			// Dibujar TECHO (Offset 6 índices * sizeof(GLuint))
 			glBindTexture(GL_TEXTURE_2D, texCeiling);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLuint)));
 
-			// Dibujar PARED IZQUIERDA (Offset 12 índices * sizeof(GLuint))
 			glBindTexture(GL_TEXTURE_2D, texWallLeft[i]);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(GLuint)));
 
-			// Dibujar PARED DERECHA (Offset 18 índices * sizeof(GLuint))
 			glBindTexture(GL_TEXTURE_2D, texWallRight[i]);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(18 * sizeof(GLuint)));
 		}
 
-		// 2. Renderizamos la pared del INICIO (Z = 0.0)
+		// Renderizamos pared INICIO (Ahora toma los índices a partir del offset 30)
 		glm::mat4 modelFront = glm::mat4(1.0f);
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelFront));
 		glBindTexture(GL_TEXTURE_2D, texFrontWall);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(24 * sizeof(GLuint)));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(30 * sizeof(GLuint)));
 
-		// 3. Renderizamos la pared del FINAL (Z = -40.8)
+		// Renderizamos pared FINAL (Toma los índices a partir del offset 24)
 		glm::mat4 modelBack = glm::mat4(1.0f);
 		modelBack = glm::translate(modelBack, glm::vec3(0.0f, 0.0f, -40.8f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelBack));
@@ -250,32 +272,26 @@ int main()
 	return 0;
 }
 
-// ==========================================
-// FUNCIÓN AUXILIAR REPARADA PARA CARGAR JPGs
-// ==========================================
+// Función auxiliar
 GLuint loadTexture(const char* path)
 {
 	GLuint textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
 
-	// Parámetros de envoltura y filtro
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true);
 
-	// MAGIA AQUÍ: Forzamos STBI_rgb_alpha (4 canales) sin importar si la imagen es RGB
 	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, STBI_rgb_alpha);
 
 	if (data)
 	{
-		// Como forzamos 4 canales arriba, aquí SIEMPRE pasamos GL_RGBA
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else
 	{
@@ -286,7 +302,6 @@ GLuint loadTexture(const char* path)
 	return textureID;
 }
 
-// Moves/alters the camera positions based on user input
 void DoMovement()
 {
 	if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) camera.ProcessKeyboard(FORWARD, deltaTime);
@@ -295,7 +310,6 @@ void DoMovement()
 	if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
-// Is called whenever a key is pressed/released via GLFW
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (GLFW_KEY_ESCAPE == key && GLFW_PRESS == action) glfwSetWindowShouldClose(window, GL_TRUE);
