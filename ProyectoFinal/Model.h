@@ -24,17 +24,22 @@ using namespace std;
 GLint TextureFromFile(const char* path, string directory);
 GLint TextureFromEmbedded(const aiTexture* embTexture);
 
+// Estructura para guardar los datos básicos de cada hueso
+struct BoneInfo
+{
+	int id;               // ID numérico para el Shader
+	glm::mat4 offset;     // Matriz que mueve el vértice de su posición original al hueso
+};
+
 class Model
 {
 public:
 	/* Functions   */
-	// Constructor, expects a filepath to a 3D model.
 	Model(GLchar* path)
 	{
 		this->loadModel(path);
 	}
 
-	// Draws the model, and thus all its meshes
 	void Draw(Shader shader)
 	{
 		for (GLuint i = 0; i < this->meshes.size(); i++)
@@ -43,45 +48,44 @@ public:
 		}
 	}
 
+	// --- METODOS DE ACCESO PARA EL ANIMADOR (FASE 3) ---
+	auto& GetBoneInfoMap() { return m_BoneInfoMap; }
+	int& GetBoneCount() { return m_BoneCounter; }
+	// ---------------------------------------------------
+
 private:
 	/* Model Data  */
 	vector<Mesh> meshes;
 	string directory;
-	vector<Texture> textures_loaded;	// Stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
+	vector<Texture> textures_loaded;
+
+	// --- VARIABLES DE ANIMACIÓN ---
+	std::map<string, BoneInfo> m_BoneInfoMap; // Diccionario (Nombre del hueso -> ID numérico)
+	int m_BoneCounter = 0;                    // Contador total de huesos descubiertos
+	// ------------------------------
 
 	/* Functions   */
-	// Loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
 	void loadModel(string path)
 	{
-		// Read file via ASSIMP
 		Assimp::Importer importer;
-		// Aplicamos aiProcess_GenSmoothNormals para asegurar que la luz siempre rebote
 		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
 
-		// Check for errors
 		if (!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
 			cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
 			return;
 		}
-		// Retrieve the directory path of the filepath
 		this->directory = path.substr(0, path.find_last_of('/'));
-
-		// Process ASSIMP's root node recursively
 		this->processNode(scene->mRootNode, scene);
 	}
 
-	// Processes a node in a recursive fashion.
 	void processNode(aiNode* node, const aiScene* scene)
 	{
-		// Process each mesh located at the current node
 		for (GLuint i = 0; i < node->mNumMeshes; i++)
 		{
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 			this->meshes.push_back(this->processMesh(mesh, scene));
 		}
-
-		// After we've processed all of the meshes (if any) we then recursively process each of the children nodes
 		for (GLuint i = 0; i < node->mNumChildren; i++)
 		{
 			this->processNode(node->mChildren[i], scene);
@@ -90,30 +94,26 @@ private:
 
 	Mesh processMesh(aiMesh* mesh, const aiScene* scene)
 	{
-		// Data to fill
 		vector<Vertex> vertices;
 		vector<GLuint> indices;
 		vector<Texture> textures;
 
-		// Walk through each of the mesh's vertices
+		// 1. Extraer posiciones, normales y texturas de los vértices
 		for (GLuint i = 0; i < mesh->mNumVertices; i++)
 		{
 			Vertex vertex;
 			glm::vec3 vector;
 
-			// Positions
 			vector.x = mesh->mVertices[i].x;
 			vector.y = mesh->mVertices[i].y;
 			vector.z = mesh->mVertices[i].z;
 			vertex.Position = vector;
 
-			// Normals
 			vector.x = mesh->mNormals[i].x;
 			vector.y = mesh->mNormals[i].y;
 			vector.z = mesh->mNormals[i].z;
 			vertex.Normal = vector;
 
-			// Texture Coordinates
 			if (mesh->mTextureCoords[0])
 			{
 				glm::vec2 vec;
@@ -129,7 +129,7 @@ private:
 			vertices.push_back(vertex);
 		}
 
-		// Indices
+		// 2. Extraer caras (indices)
 		for (GLuint i = 0; i < mesh->mNumFaces; i++)
 		{
 			aiFace face = mesh->mFaces[i];
@@ -139,24 +139,80 @@ private:
 			}
 		}
 
-		// Process materials
+		// 3. Process materials
 		if (mesh->mMaterialIndex >= 0)
 		{
 			aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-
-			// 1. Diffuse maps (Pasamos la escena para extraer texturas incrustadas)
 			vector<Texture> diffuseMaps = this->loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
 			textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-
-			// 2. Specular maps
 			vector<Texture> specularMaps = this->loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
 			textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 		}
 
+		// --- FASE 2: EXTRACCIÓN DE PESOS Y HUESOS DESDE ASSIMP ---
+		// A. Inicializamos todos los vértices con valores "vacíos"
+		for (int i = 0; i < vertices.size(); i++) {
+			for (int j = 0; j < 4; j++) {
+				vertices[i].m_BoneIDs[j] = -1;
+				vertices[i].m_Weights[j] = 0.0f;
+			}
+		}
+
+		// B. Extraemos los huesos del archivo
+		for (int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+		{
+			int boneID = -1;
+			string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+
+			// Si el hueso es nuevo, lo registramos en el diccionario
+			if (m_BoneInfoMap.find(boneName) == m_BoneInfoMap.end())
+			{
+				BoneInfo newBoneInfo;
+				newBoneInfo.id = m_BoneCounter;
+
+				// Convertimos la matriz offset de Assimp a matriz de GLM
+				aiMatrix4x4 aiMat = mesh->mBones[boneIndex]->mOffsetMatrix;
+				glm::mat4 glmMat;
+				for (int row = 0; row < 4; row++)
+					for (int col = 0; col < 4; col++)
+						glmMat[row][col] = aiMat[col][row];
+
+				newBoneInfo.offset = glmMat;
+				m_BoneInfoMap[boneName] = newBoneInfo;
+				boneID = m_BoneCounter;
+				m_BoneCounter++;
+			}
+			else
+			{
+				boneID = m_BoneInfoMap[boneName].id;
+			}
+
+			// C. Asignamos los pesos a cada vértice correspondiente
+			auto weights = mesh->mBones[boneIndex]->mWeights;
+			int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+
+			for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex)
+			{
+				int vertexId = weights[weightIndex].mVertexId;
+				float weight = weights[weightIndex].mWeight;
+
+				// Buscamos un espacio libre (de 0 a 3) en el vértice para guardar este hueso
+				for (int i = 0; i < 4; ++i)
+				{
+					if (vertices[vertexId].m_BoneIDs[i] < 0)
+					{
+						vertices[vertexId].m_Weights[i] = weight;
+						vertices[vertexId].m_BoneIDs[i] = boneID;
+						break;
+					}
+				}
+			}
+		}
+		// ---------------------------------------------------------
+
 		return Mesh(vertices, indices, textures);
 	}
 
-	// Versión actualizada y robusta para buscar texturas
 	vector<Texture> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName, const aiScene* scene)
 	{
 		vector<Texture> textures;
@@ -165,10 +221,8 @@ private:
 		{
 			aiString str;
 			mat->GetTexture(type, i, &str);
-
 			GLboolean skip = false;
 
-			// Evitar recargar la misma textura múltiples veces
 			for (GLuint j = 0; j < textures_loaded.size(); j++)
 			{
 				if (textures_loaded[j].path == str)
@@ -184,21 +238,15 @@ private:
 				Texture texture;
 				const aiTexture* embeddedTexture = nullptr;
 
-				// --- BÚSQUEDA DE TEXTURA INCRUSTADA (ESTILO CLÁSICO ASSIMP) ---
-				// Si el nombre comienza con '*', significa que es un índice de la memoria (Ej: *0, *1)
 				if (str.length > 0 && str.C_Str()[0] == '*')
 				{
-					// Convertimos el texto (ej: "0", "1") a un entero
 					int textureIndex = atoi(&str.C_Str()[1]);
-
-					// Si el índice es válido, tomamos la textura de la escena
 					if (textureIndex >= 0 && textureIndex < scene->mNumTextures)
 					{
 						embeddedTexture = scene->mTextures[textureIndex];
 					}
 				}
 
-				// Cargamos desde la RAM (si está incrustada) o desde el Disco Duro (si es externa)
 				if (embeddedTexture != nullptr)
 				{
 					texture.id = TextureFromEmbedded(embeddedTexture);
@@ -207,7 +255,6 @@ private:
 				{
 					texture.id = TextureFromFile(str.C_Str(), this->directory);
 				}
-				// -------------------------------------------------------------
 
 				texture.type = typeName;
 				texture.path = str;
@@ -227,21 +274,16 @@ private:
 GLint TextureFromFile(const char* path, string directory)
 {
 	string filename = string(path);
-
-	// Limpieza de rutas absolutas basura que el FBX pueda traer guardadas
 	size_t lastSlash = filename.find_last_of("/\\");
 	if (lastSlash != string::npos) {
 		filename = filename.substr(lastSlash + 1);
 	}
-
 	filename = directory + '/' + filename;
 
 	GLuint textureID;
-	glGenTextures(1, &textureID); // ¡Inicializa el ID oficial de OpenGL!
-
+	glGenTextures(1, &textureID);
 	int width, height;
 
-	// SOIL_LOAD_RGBA permite leer canales alfa para evitar texturas negras/blancas
 	unsigned char* image = SOIL_load_image(filename.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
 
 	if (image)
@@ -262,7 +304,6 @@ GLint TextureFromFile(const char* path, string directory)
 	}
 
 	SOIL_free_image_data(image);
-
 	return textureID;
 }
 
@@ -283,15 +324,12 @@ GLint TextureFromEmbedded(const aiTexture* embTexture)
 	int width, height, channels;
 	unsigned char* image = nullptr;
 
-	// Assimp marca mHeight como 0 si la textura interna está comprimida (png/jpg)
 	if (embTexture->mHeight == 0)
 	{
-		// Usamos SOIL2 para decodificar la imagen desde los bytes en RAM
 		image = SOIL_load_image_from_memory(reinterpret_cast<const unsigned char*>(embTexture->pcData), embTexture->mWidth, &width, &height, &channels, SOIL_LOAD_RGBA);
 	}
 	else
 	{
-		// Textura sin comprimir
 		image = reinterpret_cast<unsigned char*>(embTexture->pcData);
 		width = embTexture->mWidth;
 		height = embTexture->mHeight;
@@ -303,7 +341,7 @@ GLint TextureFromEmbedded(const aiTexture* embTexture)
 		glGenerateMipmap(GL_TEXTURE_2D);
 
 		if (embTexture->mHeight == 0) {
-			SOIL_free_image_data(image); // Libera solo si SOIL2 reservó la memoria nueva
+			SOIL_free_image_data(image);
 		}
 	}
 	else

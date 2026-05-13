@@ -9,42 +9,43 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
-
+#include <assimp/types.h> // Necesario para aiString
 
 #include "Shader.h"
 
 using namespace std;
 
-struct Vertex
-{
-	// Position
+// --- DEFINICIÓN DE ANIMACIÓN ---
+#define MAX_BONE_INFLUENCE 4
+
+struct Vertex {
+	// Atributos Básicos
 	glm::vec3 Position;
-	// Normal
 	glm::vec3 Normal;
-	// TexCoords
 	glm::vec2 TexCoords;
+
+	// --- NUEVOS ATRIBUTOS DE ANIMACIÓN ---
+	// Índices de los huesos que afectarán a este vértice
+	int m_BoneIDs[MAX_BONE_INFLUENCE];
+	// Cuánto afecta cada hueso a este vértice (de 0.0 a 1.0)
+	float m_Weights[MAX_BONE_INFLUENCE];
 };
 
-struct Texture
-{
+struct Texture {
 	GLuint id;
 	string type;
 	aiString path;
 };
 
-class Mesh
-{
+class Mesh {
 public:
-	/*  Mesh Data  */
+	/* Mesh Data  */
 	vector<Vertex> vertices;
 	vector<GLuint> indices;
 	vector<Texture> textures;
+	GLuint VAO;
 
-	/*  Functions  */
+	/* Functions  */
 	// Constructor
 	Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures)
 	{
@@ -66,7 +67,7 @@ public:
 		for (GLuint i = 0; i < this->textures.size(); i++)
 		{
 			glActiveTexture(GL_TEXTURE0 + i); // Active proper texture unit before binding
-											  // Retrieve texture number (the N in diffuse_textureN)
+			// Retrieve texture number (the N in diffuse_textureN)
 			stringstream ss;
 			string number;
 			string name = this->textures[i].type;
@@ -87,9 +88,6 @@ public:
 			glBindTexture(GL_TEXTURE_2D, this->textures[i].id);
 		}
 
-		// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
-		glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 16.0f);
-
 		// Draw mesh
 		glBindVertexArray(this->VAO);
 		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
@@ -104,10 +102,10 @@ public:
 	}
 
 private:
-	/*  Render data  */
-	GLuint VAO, VBO, EBO;
+	/* Render data  */
+	GLuint VBO, EBO;
 
-	/*  Functions    */
+	/* Functions    */
 	// Initializes all the buffer objects/arrays
 	void setupMesh()
 	{
@@ -119,9 +117,6 @@ private:
 		glBindVertexArray(this->VAO);
 		// Load data into vertex buffers
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-		// A great thing about structs is that their memory layout is sequential for all its items.
-		// The effect is that we can simply pass a pointer to the struct and it translates perfectly to a glm::vec3/2 array which
-		// again translates to 3/2 floats which translates to a byte array.
 		glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(Vertex), &this->vertices[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
@@ -130,13 +125,24 @@ private:
 		// Set the vertex attribute pointers
 		// Vertex Positions
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
 		// Vertex Normals
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)offsetof(Vertex, Normal));
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, Normal));
 		// Vertex Texture Coords
 		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)offsetof(Vertex, TexCoords));
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, TexCoords));
+
+		// --- NUEVAS LÍNEAS PARA ANIMACIÓN (Fase 2) ---
+		// Identificadores de los Huesos (Ubicación 3 en el Shader)
+		// NOTA: Usamos glVertexAttribIPointer (con 'I' de Integer) porque los IDs son números enteros
+		glEnableVertexAttribArray(3);
+		glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, m_BoneIDs));
+
+		// Pesos de los Huesos (Ubicación 4 en el Shader)
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, m_Weights));
+		// ----------------------------------------------
 
 		glBindVertexArray(0);
 	}

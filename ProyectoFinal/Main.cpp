@@ -40,15 +40,16 @@ bool firstMouse = true;
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
 
-// --- VARIABLES DE ANIMACIÓN DEL PERSONAJE ---
+// --- VARIABLES DE ANIMACIÓN ESPACIAL DEL PERSONAJE ---
 GLfloat personaZ = -2.0f;
 bool isWalking = false;
-GLfloat walkSpeed = 5.0f;
-// --------------------------------------------
+GLfloat walkSpeed = 2.5f; 
+GLfloat bobbingY = 0.0f;  // Variable para guardar el rebote vertical
+// -----------------------------------------------------
 
 // --- VARIABLE: DESPLAZAMIENTO DE LUCES Y PERSONAJE ---
 glm::vec3 offsetTunel = glm::vec3(3.5f, 2.6f, 0.0f);
-// ---------------------------------------------------------
+// -----------------------------------------------------
 
 // Posiciones exactas de las 6 luces
 glm::vec3 pointLightPositions[] = {
@@ -98,7 +99,6 @@ int main()
 
 	Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
 
-
 	// ==============================================================
 	// --- Carga de Modelos 3D ---
 	Model personaWalking((GLchar*)"Models/n.fbx");
@@ -117,7 +117,6 @@ int main()
 	Model m_arribastand((GLchar*)"Models/arribastand.obj");
 	// ==============================================================
 
-
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -128,15 +127,21 @@ int main()
 		glfwPollEvents();
 		DoMovement();
 
-		// --- LÓGICA DE ANIMACIÓN (TRASLACIÓN) ---
+		// --- LÓGICA DE TRASLACIÓN CON REBOTE (BOBBING) ---
 		if (isWalking)
 		{
 			personaZ -= walkSpeed * deltaTime;
+
+			// Función matemática para simular el paso:
+			bobbingY = sin(glfwGetTime() * 10.0f) * 0.08f;
+
 			if (personaZ <= -38.0f) {
 				personaZ = -38.0f;
 				isWalking = false;
+				bobbingY = 0.0f; // Asegurarnos de que asiente los pies al detenerse
 			}
 		}
+		// -------------------------------------------------
 
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -159,7 +164,6 @@ int main()
 		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.diffuse"), 0.35f, 0.35f, 0.35f);
 		glUniform3f(glGetUniformLocation(lampShader.Program, "dirLight.specular"), 0.1f, 0.1f, 0.1f);
 
-		// Las luces del techo mantienen su offset original
 		for (int i = 0; i < 6; i++)
 		{
 			std::string number = std::to_string(i);
@@ -176,12 +180,14 @@ int main()
 			glUniform1f(glGetUniformLocation(lampShader.Program, ("pointLights[" + number + "].quadratic").c_str()), 0.032f);
 		}
 
-
 		// ==============================================================
 		// --- RENDERIZAR PERSONAJE ---
 		glm::mat4 modelPersona = glm::mat4(1.0f);
 		modelPersona = glm::translate(modelPersona, offsetTunel);
-		modelPersona = glm::translate(modelPersona, glm::vec3(0.0f, -2.6f, personaZ));
+
+		// Inyectamos el movimiento vertical sumando bobbingY al eje Y
+		modelPersona = glm::translate(modelPersona, glm::vec3(0.0f, -2.6f + bobbingY, personaZ));
+
 		modelPersona = glm::scale(modelPersona, glm::vec3(0.038f, 0.038f, 0.038f));
 		modelPersona = glm::rotate(modelPersona, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		modelPersona = glm::rotate(modelPersona, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -197,7 +203,6 @@ int main()
 
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(tmpModel));
 
-		// --- EL NUEVO ESCENARIO COMPLETO ---
 		m_paredes.Draw(lampShader);
 		m_paredstand.Draw(lampShader);
 		m_bancas.Draw(lampShader);
