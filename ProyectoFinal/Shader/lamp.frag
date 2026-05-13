@@ -5,7 +5,7 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
 
-uniform sampler2D texture1;
+uniform sampler2D texture_diffuse1;
 uniform vec3 viewPos;
 
 // Estructura de Luz Direccional (La que viene de la pared izquierda)
@@ -44,7 +44,7 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
     
     // Resultados
-    vec3 texColor = vec3(texture(texture1, TexCoord));
+    vec3 texColor = vec3(texture(texture_diffuse1, TexCoord));
     vec3 ambient = light.ambient * texColor;
     vec3 diffuse = light.diffuse * diff * texColor;
     vec3 specular = light.specular * spec * vec3(0.2);
@@ -65,7 +65,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
 
-    vec3 texColor = vec3(texture(texture1, TexCoord));
+    vec3 texColor = vec3(texture(texture_diffuse1, TexCoord));
     vec3 ambient = light.ambient * texColor;
     vec3 diffuse = light.diffuse * diff * texColor;
     vec3 specular = light.specular * spec * vec3(0.2);
