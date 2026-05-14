@@ -259,9 +259,15 @@ int main() {
 		m_coladeras.Draw(lampShader);
 		m_botebasura.Draw(lampShader);
 		m_buzon.Draw(lampShader);
-		m_conexiones.Draw(lampShader);
 		m_sillas.Draw(lampShader);
 		m_mesas.Draw(lampShader);
+
+		// Ahora se renderiza m_conexiones de esta forma para la animación Capa de Analisis tecnico
+		GLint blueLoc = glGetUniformLocation(lampShader.Program, "blueHighlight");
+		float blueIntensity = keys[GLFW_KEY_J] ? 0.5f : 0.0f;
+		glUniform1f(blueLoc, blueIntensity);
+		m_conexiones.Draw(lampShader);
+		glUniform1f(blueLoc, 0.0f);
 
 		// STAND DINÁMICO 
 		if (!playAnimation) {
@@ -397,7 +403,7 @@ void UpdateAnimation(Personaje& p, float deltaTime, bool keys[]) {
 		}
 		else if (p.estadoActual == GIRANDO) {
 			if (p.rotacion < 90.0f) p.rotacion += 100.0f * deltaTime;
-			else { p.rotacion = 90.0f; p.estadoActual = IDLE; }
+			else { p.rotacion = 90.0f; p.estadoActual = CAMINANDO; }
 		}
 	}
 }

@@ -1,0 +1,21 @@
+diff --git a/ProyectoFinal/Shader/lamp.frag b/ProyectoFinal/Shader/lamp.frag
+index dff03e3..0d9244f 100644
+--- a/ProyectoFinal/Shader/lamp.frag
++++ b/ProyectoFinal/Shader/lamp.frag
+@@ -7,6 +7,7 @@ in vec2 TexCoord;
+ 
+ uniform sampler2D texture_diffuse1;
+ uniform vec3 viewPos;
++uniform float blueHighlight;
+ 
+ // Estructura de Luz Direccional (La que viene de la pared izquierda)
+ struct DirLight {
+@@ -85,5 +86,6 @@ void main()
+     for(int i = 0; i < NR_POINT_LIGHTS; i++)
+         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
+ 
++    result.b += blueHighlight;
+     FragColor = vec4(result, 1.0);
+-}
+\ No newline at end of file
++}
