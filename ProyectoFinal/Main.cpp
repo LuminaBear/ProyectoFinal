@@ -64,7 +64,7 @@ float animationTime = 0.0f;
 // --- ALTURAS INDEPENDIENTES PARA CALIBRACIÓN ---
 GLfloat alturaPersonaje = -2.6f;
 GLfloat alturaMultitud = -1.6f;
-// -----------------------------------------------
+// ----------------------------------------------
 
 glm::vec3 lerp(glm::vec3 start, glm::vec3 end, float factor) {
 	return start + factor * (end - start);
