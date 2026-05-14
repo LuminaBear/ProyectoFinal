@@ -61,6 +61,11 @@ struct Personaje {
 bool playAnimation = false;
 float animationTime = 0.0f;
 
+// --- ALTURAS INDEPENDIENTES PARA CALIBRACIÓN ---
+GLfloat alturaPersonaje = -2.6f;
+GLfloat alturaMultitud = -1.6f;
+// -----------------------------------------------
+
 glm::vec3 lerp(glm::vec3 start, glm::vec3 end, float factor) {
 	return start + factor * (end - start);
 }
@@ -104,10 +109,6 @@ GLfloat lastX = WIDTH / 2.0, lastY = HEIGHT / 2.0;
 bool keys[1024];
 bool firstMouse = true;
 GLfloat deltaTime = 0.0f, lastFrame = 0.0f;
-GLfloat personaZ = -2.0f;
-bool isWalking = false;
-GLfloat walkSpeed = 2.5f;
-GLfloat bobbingY = 0.0f;
 glm::vec3 offsetTunel = glm::vec3(3.5f, 2.6f, 0.0f);
 
 glm::vec3 pointLightPositions[] = {
@@ -124,7 +125,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Túnel y Personaje", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Túnel y Exposicion", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
 	glfwSetKeyCallback(window, KeyCallback);
@@ -168,23 +169,27 @@ int main() {
 	srand((unsigned int)time(NULL));
 	std::vector<Personaje> multitud;
 
-	// Inicialización de multitud con coordenadas locales
-	// 0: Grupo
+	// --- INICIALIZACIÓN DE LA MULTITUD EN CASCADA ---
+
+	// 0: Grupo principal (Caminan hasta el final del túnel)
 	multitud.push_back(Personaje(glm::vec3(-0.65f, 0.0f, 0.0f), 0.0f, 0));
 	multitud.push_back(Personaje(glm::vec3(0.0f, 0.0f, 0.05f), 0.0f, 0));
 	multitud.push_back(Personaje(glm::vec3(0.65f, 0.0f, 0.0f), 0.0f, 0));
-	multitud.push_back(Personaje(glm::vec3(-0.35f, 0.0f, -0.8f), 0.0f, 0));
-	multitud.push_back(Personaje(glm::vec3(0.35f, 0.0f, -0.8f), 0.0f, 0));
-	// 1: Solitaria
-	multitud.push_back(Personaje(glm::vec3(0.0f, 0.0f, -4.0f), 0.0f, 1));
-	// 2: Atrás
-	multitud.push_back(Personaje(glm::vec3(-0.3f, 0.0f, -6.0f), 0.0f, 2));
-	multitud.push_back(Personaje(glm::vec3(0.3f, 0.0f, -6.0f), 0.0f, 2));
 
-	// 3: Persona 9 (Viendo al revés en Z=10 local, quedará del otro lado)
-	multitud.push_back(Personaje(glm::vec3(-2.0f, 0.0f, 10.0f), 180.0f, 3));
-	// 4: Persona 10 
-	multitud.push_back(Personaje(glm::vec3(-4.0f, 0.0f, 10.0f), 180.0f, 4));
+	// 1: Detrás, se detienen cerca del inicio (Z=8)
+	multitud.push_back(Personaje(glm::vec3(0.0f, 0.0f, -3.0f), 0.0f, 1));
+	multitud.push_back(Personaje(glm::vec3(-0.5f, 0.0f, -4.0f), 0.0f, 1));
+
+	// 2: Más atrás, se detienen a medio pasillo (Z=16)
+	multitud.push_back(Personaje(glm::vec3(0.4f, 0.0f, -7.0f), 0.0f, 2));
+	multitud.push_back(Personaje(glm::vec3(-0.3f, 0.0f, -8.0f), 0.0f, 2));
+
+	// 5: Aún más atrás, se detienen lejos (Z=24)
+	multitud.push_back(Personaje(glm::vec3(0.2f, 0.0f, -11.0f), 0.0f, 5));
+	multitud.push_back(Personaje(glm::vec3(-0.6f, 0.0f, -12.0f), 0.0f, 5));
+
+	// 6: Los últimos, se detienen casi al final (Z=30)
+	multitud.push_back(Personaje(glm::vec3(0.0f, 0.0f, -15.0f), 0.0f, 6));
 
 	while (!glfwWindowShouldClose(window)) {
 		GLfloat currentFrame = glfwGetTime();
@@ -195,12 +200,6 @@ int main() {
 		DoMovement();
 
 		if (playAnimation) animationTime += deltaTime;
-
-		if (isWalking) {
-			personaZ -= walkSpeed * deltaTime;
-			bobbingY = sin(glfwGetTime() * 10.0f) * 0.08f;
-			if (personaZ <= -38.0f) { personaZ = -38.0f; isWalking = false; bobbingY = 0.0f; }
-		}
 
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -230,13 +229,26 @@ int main() {
 			glUniform1f(glGetUniformLocation(lampShader.Program, ("pointLights[" + n + "].quadratic").c_str()), 0.032f);
 		}
 
-		// Personaje Principal
-		glm::mat4 modelPersona = glm::translate(glm::mat4(1.0f), offsetTunel + glm::vec3(0.0f, -2.6f + bobbingY, personaZ));
-		modelPersona = glm::scale(modelPersona, glm::vec3(0.038f));
-		modelPersona = glm::rotate(modelPersona, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		modelPersona = glm::rotate(modelPersona, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelPersona));
-		personaWalking.Draw(lampShader);
+
+		// ==============================================================
+		// --- RENDERIZAR EXPOSITORES
+		float expositoresZ[] = { -9.95f, -17.78f, -26.55f, -33.22f };
+
+		for (int i = 0; i < 4; i++) {
+			glm::mat4 mExpositor = glm::mat4(1.0f);
+			// Los ponemos del lado izquierdo (X = -1.5f) para que queden frente a la multitud
+			mExpositor = glm::translate(mExpositor, offsetTunel + glm::vec3(-1.5f, alturaPersonaje, expositoresZ[i]));
+			mExpositor = glm::scale(mExpositor, glm::vec3(0.025f)); // Misma escala
+
+			// Rotamos 90 grados para que vean hacia la derecha (+X)
+			mExpositor = glm::rotate(mExpositor, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+			mExpositor = glm::rotate(mExpositor, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(mExpositor));
+			personaWalking.Draw(lampShader);
+		}
+		// ==============================================================
+
 
 		// Estáticos
 		glm::mat4 baseRot = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, -1.0f, 0.0f));
@@ -282,14 +294,10 @@ int main() {
 		for (size_t i = 0; i < multitud.size(); i++) {
 			UpdateAnimation(multitud[i], deltaTime, keys);
 
-			// Creamos un offset para que el centro de su mundo local sea donde inicia el personaje principal
-			// (-2.0f en Z y ajustado al offsetTunel).
-			glm::mat4 baseMultitudTransform = glm::translate(glm::mat4(1.0f), offsetTunel + glm::vec3(0.0f, -2.6f, -2.0f));
-
-			// MODIFICACIÓN: Rotar todo el sistema de la multitud 180 grados alrededor del eje Y local
+			glm::mat4 baseMultitudTransform = glm::translate(glm::mat4(1.0f), offsetTunel + glm::vec3(0.0f, alturaMultitud, -2.0f));
 			baseMultitudTransform = glm::rotate(baseMultitudTransform, glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-			// Aplicar las transformaciones individuales del personaje
+			// Aplicar las transformaciones individuales
 			glm::mat4 model = glm::translate(baseMultitudTransform, multitud[i].posicion);
 			model = glm::rotate(model, glm::radians(multitud[i].rotacion), glm::vec3(0.0f, 1.0f, 0.0f));
 			glm::mat4 torsoBase = model;
@@ -336,7 +344,6 @@ void DoMovement() {
 	if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) camera.ProcessKeyboard(BACKWARD, deltaTime);
 	if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) camera.ProcessKeyboard(LEFT, deltaTime);
 	if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) camera.ProcessKeyboard(RIGHT, deltaTime);
-	if (keys[GLFW_KEY_C]) isWalking = true;
 	if (keys[GLFW_KEY_K]) { playAnimation = true; animationTime = 0.0f; }
 }
 
@@ -354,6 +361,7 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos) {
 	lastX = xPos; lastY = yPos;
 }
 
+// --- LÓGICA DE ANIMACIÓN ---
 void UpdateAnimation(Personaje& p, float deltaTime, bool keys[]) {
 	if (p.estadoActual == IDLE && keys[GLFW_KEY_N]) {
 		p.estadoActual = CAMINANDO;
@@ -369,69 +377,27 @@ void UpdateAnimation(Personaje& p, float deltaTime, bool keys[]) {
 		p.brazoIzq = p.brazoDer = p.piernaIzq = p.piernaDer = 0.0f;
 	}
 
-	if (p.tipoComportamiento == 0) {
+	if (p.tipoComportamiento == 0) { // Grupo principal
 		if (p.estadoActual == CAMINANDO) {
-			if (p.posicion.z < 10.0f) p.posicion.z += 1.5f * deltaTime;
-			else { p.posicion.z = 10.0f; p.estadoActual = IDLE; }
+			if (p.posicion.z < 36.0f) p.posicion.z += 1.5f * deltaTime;
+			else { p.posicion.z = 36.0f; p.estadoActual = IDLE; }
 		}
 	}
-	else if (p.tipoComportamiento == 1) {
+	// Generalización para los que se detienen a lo largo del pasillo (Tipos 1, 2, 5 y 6)
+	else if (p.tipoComportamiento == 1 || p.tipoComportamiento == 2 || p.tipoComportamiento == 5 || p.tipoComportamiento == 6) {
+		float limiteZ = 0.0f;
+		if (p.tipoComportamiento == 1) limiteZ = 8.0f;
+		else if (p.tipoComportamiento == 2) limiteZ = 16.0f;
+		else if (p.tipoComportamiento == 5) limiteZ = 24.0f;
+		else if (p.tipoComportamiento == 6) limiteZ = 30.0f;
+
 		if (p.estadoActual == CAMINANDO) {
-			if (p.posicion.z < 7.0f) p.posicion.z += 1.8f * deltaTime;
+			if (p.posicion.z < limiteZ) p.posicion.z += 1.6f * deltaTime;
 			else p.estadoActual = GIRANDO;
 		}
 		else if (p.estadoActual == GIRANDO) {
 			if (p.rotacion < 90.0f) p.rotacion += 100.0f * deltaTime;
 			else { p.rotacion = 90.0f; p.estadoActual = IDLE; }
-		}
-	}
-	else if (p.tipoComportamiento == 2) {
-		if (p.estadoActual == CAMINANDO) {
-			p.timerLogica += deltaTime;
-			p.posicion.z += 2.2f * deltaTime;
-			if (p.timerLogica > 4.5f) p.estadoActual = GIRANDO;
-		}
-		else if (p.estadoActual == GIRANDO) {
-			if (p.rotacion < 90.0f) p.rotacion += 120.0f * deltaTime;
-			else { p.rotacion = 90.0f; p.estadoActual = IDLE; }
-		}
-	}
-	else if (p.tipoComportamiento == 3) { // PERSONA 9
-		if (p.estadoActual == CAMINANDO) {
-			if (p.timerLogica < 6.7f) p.timerLogica += deltaTime;
-			else {
-				if (p.rotacion == 180.0f) {
-					if (p.posicion.z > 6.0f) p.posicion.z -= 1.5f * deltaTime;
-					else p.estadoActual = GIRANDO;
-				}
-				else if (p.rotacion == 90.0f) {
-					if (p.posicion.x < 5.0f) p.posicion.x += 1.5f * deltaTime;
-					else p.estadoActual = IDLE;
-				}
-			}
-		}
-		else if (p.estadoActual == GIRANDO) {
-			if (p.rotacion > 90.0f) p.rotacion -= 100.0f * deltaTime;
-			else { p.rotacion = 90.0f; p.estadoActual = CAMINANDO; }
-		}
-	}
-	else if (p.tipoComportamiento == 4) {
-		if (p.estadoActual == CAMINANDO) {
-			if (p.timerLogica < 5.0f) p.timerLogica += deltaTime;
-			else {
-				if (p.rotacion == 180.0f) {
-					if (p.posicion.z > 4.0f) p.posicion.z -= 1.5f * deltaTime;
-					else p.estadoActual = GIRANDO;
-				}
-				else if (p.rotacion == 90.0f) {
-					if (p.posicion.x < 5.0f) p.posicion.x += 1.5f * deltaTime;
-					else p.estadoActual = IDLE;
-				}
-			}
-		}
-		else if (p.estadoActual == GIRANDO) {
-			if (p.rotacion > 90.0f) p.rotacion -= 100.0f * deltaTime;
-			else { p.rotacion = 90.0f; p.estadoActual = CAMINANDO; }
 		}
 	}
 }
