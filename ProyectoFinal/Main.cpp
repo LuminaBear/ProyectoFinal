@@ -1,3 +1,9 @@
+//320258187
+//320281589
+//320206384
+//Equipo 18
+//Gpo 1
+
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -125,7 +131,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Túnel y Exposicion", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Pasillo FI con Stands 320258187_320281589_320206384", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 	glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
 	glfwSetKeyCallback(window, KeyCallback);
@@ -403,7 +409,7 @@ void UpdateAnimation(Personaje& p, float deltaTime, bool keys[]) {
 		}
 		else if (p.estadoActual == GIRANDO) {
 			if (p.rotacion < 90.0f) p.rotacion += 100.0f * deltaTime;
-			else { p.rotacion = 90.0f; p.estadoActual = CAMINANDO; }
+			else { p.rotacion = 90.0f; p.estadoActual = IDLE; }
 		}
 	}
 }

@@ -46,5 +46,8 @@
     <None Include="Shader\lamp.vs">
       <Filter>Archivos de origen\Shader</Filter>
     </None>
+    <None Include="lamp.patch">
+      <Filter>Archivos de origen\Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

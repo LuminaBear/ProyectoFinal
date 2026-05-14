@@ -29,6 +29,7 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="lamp.patch" />
     <None Include="Shader\lamp.frag" />
     <None Include="Shader\lamp.vs" />
   </ItemGroup>

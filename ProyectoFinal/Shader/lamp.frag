@@ -8,6 +8,9 @@ in vec2 TexCoord;
 uniform sampler2D texture_diffuse1;
 uniform vec3 viewPos;
 
+// Modificación: Variable para la capa de análisis técnico
+uniform float blueHighlight; 
+
 // Estructura de Luz Direccional (La que viene de la pared izquierda)
 struct DirLight {
     vec3 direction;
@@ -84,6 +87,9 @@ void main()
     // 2. Sumamos encima la luz de los 6 focos
     for(int i = 0; i < NR_POINT_LIGHTS; i++)
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
+
+    // 3. Modificación: Aplicamos el brillo azul de la capa de análisis
+    result.b += blueHighlight;
 
     FragColor = vec4(result, 1.0);
 }
